@@ -7,8 +7,6 @@ from collections import namedtuple
 Item = namedtuple("Item", ['index', 'value', 'weight'])
 
 def read_data(input_data):
-
-
     # parse the input
     lines = input_data.split('\n')
 
@@ -25,11 +23,65 @@ def read_data(input_data):
 
     return items, item_count, capacity
 
+def bnb_relaxation(input_data):
+    items, item_count, capacity = read_data(input_data)
+
+    val_per_w = [item.value/item.weight for item in items]
+
+    max_val = 0
+    record = []
+    current_taken = []
+    current_val = 0
+    current_weight = 0
+
+    estimate = 0
+    temp_weight = 0
+    for index in np.argsort(val_per_w):
+        item = items[index]
+        if item.weight + temp_weight < capacity:
+            estimate += item.value
+            temp_weight += item.weight
+        else:
+            fractional_val = (capacity - temp_weight) * val_per_w[index]
+            estimate += fractional_val
+
+    q = [(0, current_val, current_weight, estimate, current_taken)]
+    # print(items, capacity)
+    while q:
+        # print(q)
+        index, current_val, current_weight, estimate, current_taken = q.pop(0)
+        if index >= item_count:
+            continue
+
+        item = items[index]
+        # check if the item is heavier than available weight
+        if item.weight + current_weight > capacity:
+            continue
+
+        if item.value + current_val > max_val:
+            max_val = item.value + current_val
+            record = current_taken + [index]
+
+        # take the item
+        q.append((index + 1, current_val + item.value, current_weight + item.weight, estimate, current_taken + [index]))
+
+        # don't take the item
+        # check if it exceeds the lower bound
+        if estimate - item.value < max_val:
+            continue
+        else:
+            q.append((index + 1, current_val, current_weight, estimate - item.value, current_taken))
+
+    # taken = [0 for _ in range(item_count)]
+
+    taken = [0 for _ in range(item_count)]
+    for i in record:
+        taken[i] = 1
+    return max_val, taken
 
 def bnb(input_data):
     items, item_count, capacity = read_data(input_data)
 
-    max_value = 0
     max_value_sum = sum([item.value for item in items])
 
     max_val = 0
@@ -42,8 +94,8 @@ def bnb(input_data):
     q = [(0, current_val, current_weight, estimate, current_taken)]
     # print(items, capacity)
     while q:
-        print(q)
-        index, current_val, current_weight, estimate, current_taken = q.pop()
+        # print(q)
+        index, current_val, current_weight, estimate, current_taken = q.pop(0)
         if index >= item_count:
             continue
 
@@ -63,7 +115,7 @@ def bnb(input_data):
 
         # don't take the item
         # check if it exceeds the lower bound
-        if estimate - item.value < max_value:
+        if estimate - item.value < max_val:
             continue
         else:
             q.append((index + 1, current_val, current_weight, estimate-item.value, current_taken))
@@ -110,11 +162,11 @@ def dp(input_data):
 def solve_it(input_data):
     items, item_count, capacity = read_data(input_data)
     print(item_count, capacity)
-    if capacity >= 100000:
+    # if capacity >= 100000:
         # pass
-        value, taken = bnb(input_data)
-    else:
-        value, taken = dp(input_data)
+    value, taken = bnb(input_data)
+    # else:
+    #     value, taken = dp(input_data)
     # prepare the solution in the specified output format is
     output_data = str(value) + ' ' + str(1) + '\n'
     output_data += ' '.join(map(str, taken))
